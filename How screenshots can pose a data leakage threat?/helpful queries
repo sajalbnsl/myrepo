@@ -1,0 +1,34 @@
+#### Check presence of ShareX and ImgurSniper ####
+
+DeviceTvmSoftwareInventory
+| where DeviceName contains "enter device name" and (SoftwareName contains "sharex" or SoftwareName contains "imgursniper")
+| summarize by DeviceId,DeviceName,SoftwareName
+
+
+
+
+#### To check if ShareX or any such application was used on a device to capture a screenshot ####
+
+DeviceEvents
+| where DeviceName contains "enter device name" and ActionType contains "screenshottaken" and InitiatingProcessFileName contains "sharex"
+| summarize last_time=max(Timestamp) by DeviceName,ActionType,InitiatingProcessFileName,InitiatingProcessCommandLine,FileName
+
+
+
+
+#### To get a list of screenshot names captured by user using ShareX ####
+
+DeviceFileEvents
+| where DeviceName contains "enter device" and FolderPath contains "sharex\\screenshots"
+| summarize by Timestamp,DeviceName,ActionType,InitiatingProcessAccountUpn,FileName,FolderPath
+
+
+
+
+#### To get details such as FileName, Date of capture, Screenshot URL and Screenshot deletion URL with respect to each screenshot and save them in a text file for review ####
+
+//NOTE//
+// For convenience and easy retrieval, it is recommended to convert the History.json file into a text file before running this command.
+// You can find the History.json file at File path = <your drive>\<your base folder>\<your other folder>..\Sharex\History.json
+
+grep -Ei "Filename|Datetime|url|deletionurl" <ShareX History.json file full path> > ShareXDataOutputFile.txt
