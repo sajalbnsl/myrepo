@@ -1,0 +1,67 @@
+####To check if inbound access is provided to SSH(22) and/or RDP(3389) ports from any IP over the internet####
+
+//AuthorizeSecurityGroupIngress//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=AuthorizeSecurityGroupIngress responseElements._return=true requestParameters.groupId=<enter security group ID> (requestParameters.ipPermissions.items{}.ipRanges.items{}.cidrIp="0.0.0.0/0" OR requestParameters.ipPermissions.items{}.ipRanges.items{}.cidrIp="::/0") (requestParameters.ipPermissions.items{}.toPort=3389 OR requestParameters.ipPermissions.items{}.toPort=22)
+| rename requestParameters.groupId as security_group_id, requestParameters.ipPermissions.items{}.toPort as allowed_to_port, requestParameters.ipPermissions.items{}.ipRanges.items{}.cidrIp as allowed_ip_range, userIdentity.arn as user_arn
+| eval user_name=mvindex(split(user_arn,"/"),-1)
+| stats values(user_name) as user_name values(recipientAccountId) as aws_account_id values(awsRegion) as aws_region values(eventName) as eventName values(responseElements.securityGroupRuleSet.items{}.securityGroupRuleId) as security_group_rule_id by _time user_arn security_group_id allowed_to_port allowed_ip_range
+| search (allowed_to_port=22 OR allowed_to_port=3389)
+| sort -_time
+
+//////NOTE//////
+// The CIDR IPv4 notation 0.0.0.0/0 and IPv6 notation ::/0 denote no particular IP address which means any IP from the internet.
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
+
+
+
+
+####To check if the flagged AWS security group was deleted####
+
+//DeleteSecurityGroup//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=DeleteSecurityGroup responseElements._return=true requestParameters.groupId=<enter security group ID>
+| rename requestParameters.groupId as security_group_id, userIdentity.arn as user_arn
+| eval user_name=mvindex(split(user_arn,"/"),-1)
+| stats values(user_name) as user_name values(recipientAccountId) as aws_account_id values(eventName) as eventName by _time user_arn security_group_id
+| sort -_time
+
+//////NOTE//////
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
+
+
+
+
+####To check if the security group rule providing open inbound access over SSH and RDP ports was revoked####
+
+//RevokeSecurityGroupIngress//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=RevokeSecurityGroupIngress responseElements._return=true responseElements.revokedSecurityGroupRuleSet.items{}.groupId=<security group ID> (responseElements.revokedSecurityGroupRuleSet.items{}.toPort=3389 OR responseElements.revokedSecurityGroupRuleSet.items{}.toPort=22)
+| rename responseElements.revokedSecurityGroupRuleSet.items{}.groupId as security_group_id, responseElements.revokedSecurityGroupRuleSet.items{}.toPort as allowed_to_port, userIdentity.arn as user_arn
+| eval user_name=mvindex(split(user_arn,"/"),-1)
+| stats values(user_name) as user_name values(recipientAccountId) as aws_account_id values(eventName) as eventName values(responseElements.revokedSecurityGroupRuleSet.items{}.securityGroupRuleId) as revoked_security_group_rule_id by _time user_arn security_group_id allowed_to_port
+| search (allowed_to_port=22 OR allowed_to_port=3389)
+| sort -_time
+
+//////NOTE//////
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
+
+
+
+
+####To check if the security group rule providing open inbound access over SSH and RDP ports was modified####
+
+//ModifySecurityGroupRules//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=ModifySecurityGroupRules responseElements.ModifySecurityGroupRulesResponse.return=true requestParameters.ModifySecurityGroupRulesRequest.GroupId=<security group ID> (requestParameters.ModifySecurityGroupRulesRequest.SecurityGroupRule.SecurityGroupRule.ToPort=22 OR requestParameters.ModifySecurityGroupRulesRequest.SecurityGroupRule.SecurityGroupRule.ToPort=3389) 
+| rename requestParameters.ModifySecurityGroupRulesRequest.GroupId as security_group_id, requestParameters.ModifySecurityGroupRulesRequest.SecurityGroupRule.SecurityGroupRule.ToPort as allowed_to_port, requestParameters.ModifySecurityGroupRulesRequest.SecurityGroupRule.SecurityGroupRule.CidrIpv4 as current_allowed_ip_range, userIdentity.arn as user_arn
+| eval user_name=mvindex(split(user_arn,"/"),-1)
+| stats values(user_name) as user_name values(recipientAccountId) as aws_account_id values(eventName) as eventName values(requestParameters.ModifySecurityGroupRulesRequest.SecurityGroupRule.SecurityGroupRuleId) as modified_security_group_rule_id by _time user_arn security_group_id current_allowed_ip_range allowed_to_port
+| sort -_time
+
+//////NOTE//////
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
