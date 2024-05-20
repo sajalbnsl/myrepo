@@ -1,0 +1,21 @@
+#### Okta Activity for a user or an IP ####
+
+index=<enter your Splunk index where Okta logs are ingested> "<enter username to seach>" OR "enter IP to search" OR "enter app name to search"
+| rename actor.alternateId as actor, client.ipAddress as actor_ip
+| eval target_app = if(mvindex(target.type,0)=="AppInstance",mvindex(target.alternateId,0),"NA"), target_user = if(mvindex(target.type,-1)=="AppUser",mvindex(target.alternateId,-1),target.alternateId)
+| stats values(actor.displayName) as actor_display_name values(target_app) as target_app values(client.userAgent.browser) as actor_browser values(client.userAgent.os) as actor_device_os values(securityContext.isp) as actor_isp values(client.geographicalContext.city) as actor_city values(client.geographicalContext.country) as actor_country values(eventType) as okta_event_type values(outcome.result) as okta_event_result values(debugContext.debugData.deviceCategory) as actor_device_category values(client.userAgent.rawUserAgent) as actor_useragent values(securityContext.isProxy) as is_actor_ip_a_proxy by _time actor actor_ip
+| where actor_ip!="null" 
+| fillnull value=NA
+
+
+
+
+#### Okta Activity for a user or an IP per day ####
+
+index=<enter your Splunk index where Okta logs are ingested> "<enter username to seach>" OR "enter IP to search" OR "enter app name to search"
+| bin _time span=1d
+| rename actor.alternateId as actor, client.ipAddress as actor_ip
+| eval target_app = if(mvindex(target.type,0)=="AppInstance",mvindex(target.alternateId,0),"NA"), target_user = if(mvindex(target.type,-1)=="AppUser",mvindex(target.alternateId,-1),target.alternateId)
+| stats values(actor.displayName) as actor_display_name values(target_app) as target_app values(client.userAgent.browser) as actor_browser values(client.userAgent.os) as actor_device_os values(securityContext.isp) as actor_isp values(client.geographicalContext.city) as actor_city values(client.geographicalContext.country) as actor_country values(eventType) as okta_event_type values(outcome.result) as okta_event_result values(debugContext.debugData.deviceCategory) as actor_device_category values(client.userAgent.rawUserAgent) as actor_useragent values(securityContext.isProxy) as is_actor_ip_a_proxy by _time actor actor_ip
+| where actor_ip!="null" 
+| fillnull value=NA
