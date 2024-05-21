@@ -1,0 +1,63 @@
+#### To check for successful console logins from all users without MFA ####
+
+//ConsoleLogin//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=ConsoleLogin responseElements.ConsoleLogin=Success additionalEventData.MFAUsed=No userIdentity.arn=<enter user arn for which logins without MFA are to be searched>
+| rename userIdentity.arn as user_arn
+| stats values(userIdentity.userName) as actor values(userIdentity.type) as user_type values(recipientAccountId) as aws_account_id values(eventName) as eventName values(additionalEventData.MFAUsed) as mfa_used by _time user_arn sourceIPAddress
+| sort -_time
+
+//////NOTE////// 
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
+
+
+
+
+#### To check for successful console logins from root users without MFA ####
+
+//ConsoleLogin//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=ConsoleLogin responseElements.ConsoleLogin=Success userIdentity.type=root additionalEventData.MFAUsed=No userIdentity.arn=<enter user arn for which logins without MFA are to be searched>
+| rename userIdentity.arn as user_arn
+| stats values(userIdentity.userName) as root_actor values(userIdentity.type) as user_type values(recipientAccountId) as aws_account_id values(eventName) as eventName values(additionalEventData.MFAUsed) as mfa_used by _time user_arn sourceIPAddress
+| sort -_time
+
+//////NOTE////// 
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
+
+
+
+
+#### To check if MFA was enabled by flagged user ####
+
+//EnableMFADevice//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=EnableMFADevice userIdentity.arn=<enter user arn for which MFA enablement is to be checked>
+| rename userIdentity.arn as user_arn
+| stats values(errorCode) as error_code values(requestParameters.userName) as mfa_enabled_for_user values(requestParameters.serialNumber) as enabled_mfa_device values(recipientAccountId) as aws_account_id values(eventName) as eventName by _time user_arn sourceIPAddress
+| where isnull(errorCode)
+| sort -_time
+
+//////NOTE//////
+// the 'errorCode' field is included in the CloudTrail log only if an error occurred in enabling MFA. 
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
+
+
+
+
+#### To check if MFA was enabled by flagged user (alternative query) ####
+
+//ConsoleLogin//
+
+index=<your AWS index> sourcetype="<your AWS cloudtrail sourcetype>" eventName=ConsoleLogin responseElements.ConsoleLogin=Success additionalEventData.MFAUsed=Yes userIdentity.arn=<enter user arn for which login with MFA is to be checked>
+| rename userIdentity.arn as user_arn
+| stats values(userIdentity.userName) as actor values(userIdentity.type) as user_type values(recipientAccountId) as aws_account_id values(eventName) as eventName values(additionalEventData.MFAUsed) as mfa_used by _time user_arn sourceIPAddress
+| sort -_time
+
+//////NOTE////// 
+// ensure that time of login WITH MFA is greater than time of login WITHOUT MFA
+// all the field names used in the above query are from AWS cloudtrail raw log. 
+// if your organisation uses the CIM format then please replace the field names with appropriate normalised field names.
