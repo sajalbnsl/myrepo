@@ -1,11 +1,12 @@
 #### Okta Activity for a user or an IP ####
 
 index=<enter your Splunk index where Okta logs are ingested> "<enter username to seach>" OR "enter IP to search" OR "enter app name to search"
-| rename actor.alternateId as actor, client.ipAddress as actor_ip
-| eval target_app = if(mvindex(target.type,0)=="AppInstance",mvindex(target.alternateId,0),"NA"), target_user = if(mvindex(target.type,-1)=="AppUser",mvindex(target.alternateId,-1),target.alternateId)
-| stats values(actor.displayName) as actor_display_name values(target_app) as target_app values(client.userAgent.browser) as actor_browser values(client.userAgent.os) as actor_device_os values(securityContext.isp) as actor_isp values(client.geographicalContext.city) as actor_city values(client.geographicalContext.country) as actor_country values(eventType) as okta_event_type values(outcome.result) as okta_event_result values(debugContext.debugData.deviceCategory) as actor_device_category values(client.userAgent.rawUserAgent) as actor_useragent values(securityContext.isProxy) as is_actor_ip_a_proxy by _time actor actor_ip
-| where actor_ip!="null" 
+| rename actor.alternateId as actor, client.ipAddress as actor_ip, target{}.alternateId as target
+| stats values(actor.displayName) as actor_display_name values(target) as target_user_or_app values(client.geographicalContext.city) as actor_city values(client.geographicalContext.country) as actor_country values(client.userAgent.browser) as actor_browser values(client.userAgent.os) as actor_device_os values(securityContext.isp) as actor_isp  values(eventType) as okta_event_type values(displayMessage) as okta_event_message values(outcome.result) as okta_event_result values(client.userAgent.rawUserAgent) as actor_useragent values(securityContext.isProxy) as is_actor_ip_a_proxy by _time actor actor_ip
+| where actor_ip!="null"
+| table _time actor actor_display_name okta_event_* target_user_or_app actor_ip actor_city actor_country actor_isp actor_useragent actor_browser actor_device_os is_actor_ip_a_proxy
 | fillnull value=NA
+| sort -_time
 
 
 
@@ -14,8 +15,9 @@ index=<enter your Splunk index where Okta logs are ingested> "<enter username to
 
 index=<enter your Splunk index where Okta logs are ingested> "<enter username to seach>" OR "enter IP to search" OR "enter app name to search"
 | bin _time span=1d
-| rename actor.alternateId as actor, client.ipAddress as actor_ip
-| eval target_app = if(mvindex(target.type,0)=="AppInstance",mvindex(target.alternateId,0),"NA"), target_user = if(mvindex(target.type,-1)=="AppUser",mvindex(target.alternateId,-1),target.alternateId)
-| stats values(actor.displayName) as actor_display_name values(target_app) as target_app values(client.userAgent.browser) as actor_browser values(client.userAgent.os) as actor_device_os values(securityContext.isp) as actor_isp values(client.geographicalContext.city) as actor_city values(client.geographicalContext.country) as actor_country values(eventType) as okta_event_type values(outcome.result) as okta_event_result values(debugContext.debugData.deviceCategory) as actor_device_category values(client.userAgent.rawUserAgent) as actor_useragent values(securityContext.isProxy) as is_actor_ip_a_proxy by _time actor actor_ip
-| where actor_ip!="null" 
+| rename actor.alternateId as actor, client.ipAddress as actor_ip, target{}.alternateId as target
+| stats values(actor.displayName) as actor_display_name values(target) as target_user_or_app values(client.geographicalContext.city) as actor_city values(client.geographicalContext.country) as actor_country values(client.userAgent.browser) as actor_browser values(client.userAgent.os) as actor_device_os values(securityContext.isp) as actor_isp  values(eventType) as okta_event_type values(displayMessage) as okta_event_message values(outcome.result) as okta_event_result values(client.userAgent.rawUserAgent) as actor_useragent values(securityContext.isProxy) as is_actor_ip_a_proxy by _time actor actor_ip
+| where actor_ip!="null"
+| table _time actor actor_display_name okta_event_* target_user_or_app actor_ip actor_city actor_country actor_isp actor_useragent actor_browser actor_device_os is_actor_ip_a_proxy
 | fillnull value=NA
+| sort -_time
