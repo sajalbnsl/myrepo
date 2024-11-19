@@ -1,0 +1,15 @@
+# Okta MFA query 
+index="*okta*" eventType="*mfa*" <enter user name> | stats values(actor.alternateId) as actor values(target{}.alternateId) as target values(client.userAgent.rawUserAgent) as useragent by _time eventType outcome.result outcome.reason src_ip 
+| sort -_time
+
+# Multiple push notifications denied by user
+index="*okta*" src_user="*" OR src_user=* eventType="user.mfa.okta_verify.deny_push" | stats values(outcome.result) as result values(securityContext.isp) as src_isp values(client.geographicalContext.city) as city values(client.geographicalContext.country) as country latest(eventType) as okta_event values(client.userAgent.browser) as browser values(client.userAgent.os) as device_os values(client.userAgent.rawUserAgent) as user_agent values(dest_app) as dest_apps values(outcome.reason) as reason values(displayMessage) as okta_msg by _time src_user src_ip  
+| where src_ip!="null"
+| table _time result reason dest_apps src_user src_ip src_isp city country okta_event okta_msg browser device_os user_agent
+
+# Number of IPs/ISPs used by a user
+index="*okta*" <enter user name> outcome.result=*
+| where src_ip!="null"
+| stats latest(_time) as last_time_used dc(src_ip) as ip_count dc(country) as country_count values(country) as countries values(src_ip) as src_ips values(outcome.result) as login_result by src_isp
+| eval last_time_used = strftime(last_time_used,"%Y-%m-%d %H:%M:%S")
+| table last_time_used src_isp login_result ip_count src_ips country_count countries
